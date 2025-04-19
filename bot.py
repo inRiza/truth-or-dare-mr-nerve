@@ -67,7 +67,7 @@ class MyClient(Client):
       add_truth = content[len('/addtruth '):].strip()
       if add_truth:
         add_entry('truths', add_truth)
-        await message.channel.send(f'✅ Truth added!')
+        await message.channel.send('✅ Truth added!')
       else:
         await message.channel.send('❌ Please provide a truth to add.')
       
@@ -75,7 +75,7 @@ class MyClient(Client):
       add_dare = content[len('/adddare '):].strip()
       if add_dare:
         add_entry('dares', add_dare)
-        await message.channel.send(f'✅ Dare added!')
+        await message.channel.send('✅ Dare added!')
       else:
         await message.channel.send('❌ Please provide a dare to add.')
         
