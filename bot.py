@@ -1,4 +1,4 @@
-from discord import Client, Intents
+from discord import Client, Intents, Embed, Color
 import random
 import os
 import sqlite3
@@ -106,6 +106,12 @@ async def generate_roast_caption(prompt):
     else:
         return "Sorry, the roast feature is currently unavailable. Please check back later."
 
+# Create a styled embed for messages
+def create_embed(title, description, color=Color.blue()):
+    embed = Embed(title=title, description=description, color=color)
+    embed.set_footer(text="Mr. Nerve Bot")
+    return embed
+
 class MyClient(Client):
   def __init__(self, **kwargs):
     super().__init__(**kwargs)
@@ -122,99 +128,148 @@ class MyClient(Client):
     content = message.content.lower()
     
     if content.startswith('/hello'):
-      await message.channel.send('Hello! I am Mr. Nerve, your friendly Discord bot!')
-      await message.channel.send('''Here are my commands:
-/truth - Get a random truth
-/dare - Get a random dare
-/addtruth - Add a truth
-/adddare - Add a dare
-/roastmode - Activate roast mode''')
+      embed = create_embed(
+        "👋 Hello there!", 
+        "I am Mr. Nerve, your friendly Discord bot!\n\n**Available Commands:**\n" +
+        "`/truth` - Get a random truth\n" +
+        "`/dare` - Get a random dare\n" +
+        "`/addtruth` - Add a truth\n" +
+        "`/adddare` - Add a dare\n" +
+        "`/roastmode` - Activate roast mode",
+        Color.green()
+      )
+      await message.channel.send(embed=embed)
     
     elif content.startswith('/admin'):
       input_password = content[len('/admin '):].strip()
       if input_password != os.getenv("ADMIN_PASSWORD"):
-        await message.channel.send('❌ Incorrect password!')
+        embed = create_embed("❌ Access Denied", "Incorrect password!", Color.red())
+        await message.channel.send(embed=embed)
         return
-      await message.channel.send('✅ Admin mode activated!')
+        
       self.admin_active = True
-      await message.channel.send('''Hello Admin! What do you want to do?
-/deleteall - Delete all truths and dares
-/deletealltruth - Delete all truths
-/deletealldare - Delete all dares
-/showtruths - Show all truths
-/showdares - Show all dares''')
+      embed = create_embed(
+        "✅ Admin Mode Activated", 
+        "Hello Admin! What do you want to do?\n\n" +
+        "`/deleteall` - Delete all truths and dares\n" +
+        "`/deletealltruth` - Delete all truths\n" +
+        "`/deletealldare` - Delete all dares\n" +
+        "`/showtruths` - Show all truths\n" +
+        "`/showdares` - Show all dares",
+        Color.gold()
+      )
+      await message.channel.send(embed=embed)
       
     elif self.admin_active:
       if content.startswith('/deleteall'):
         delete_all_truths()
         delete_all_dares()
-        await message.channel.send('✅ All truths and dares deleted!')
+        embed = create_embed("✅ Success", "All truths and dares have been deleted!", Color.green())
+        await message.channel.send(embed=embed)
         
       elif content.startswith('/deletealltruth'):
         delete_all_truths()
-        await message.channel.send('✅ All truths deleted!')
+        embed = create_embed("✅ Success", "All truths have been deleted!", Color.green())
+        await message.channel.send(embed=embed)
       
       elif content.startswith('/deletealldare'):
         delete_all_dares()
-        await message.channel.send('✅ All dares deleted!')
+        embed = create_embed("✅ Success", "All dares have been deleted!", Color.green())
+        await message.channel.send(embed=embed)
       
       elif content.startswith('/showtruths'):
-        await message.channel.send('Here are all the truths:')
         conn = sqlite3.connect('truthordare.db')
         c = conn.cursor()
         c.execute("SELECT content FROM truths")
         truths = c.fetchall()
         conn.close()
+        
         if truths:
-          for truth in truths:
-            await message.channel.send(truth[0])
+          embed = create_embed("📝 All Truths", "Here are all the truths in the database:", Color.blue())
+          await message.channel.send(embed=embed)
+          
+          # Send truths in chunks to avoid message length limits
+          truth_text = ""
+          for i, truth in enumerate(truths, 1):
+            truth_text += f"**{i}.** {truth[0]}\n"
+            if i % 10 == 0 or i == len(truths):
+              chunk_embed = create_embed("", truth_text, Color.blue())
+              await message.channel.send(embed=chunk_embed)
+              truth_text = ""
         else:
-          await message.channel.send('No truths found.')
+          embed = create_embed("📝 All Truths", "No truths found in the database.", Color.blue())
+          await message.channel.send(embed=embed)
         
       elif content.startswith('/showdares'):
-        await message.channel.send('Here are all the dares:')
         conn = sqlite3.connect('truthordare.db')
         c = conn.cursor()
         c.execute("SELECT content FROM dares")
         dares = c.fetchall()
         conn.close()
+        
         if dares:
-          for dare in dares:
-            await message.channel.send(dare[0])
+          embed = create_embed("🎯 All Dares", "Here are all the dares in the database:", Color.purple())
+          await message.channel.send(embed=embed)
+          
+          # Send dares in chunks to avoid message length limits
+          dare_text = ""
+          for i, dare in enumerate(dares, 1):
+            dare_text += f"**{i}.** {dare[0]}\n"
+            if i % 10 == 0 or i == len(dares):
+              chunk_embed = create_embed("", dare_text, Color.purple())
+              await message.channel.send(embed=chunk_embed)
+              dare_text = ""
         else:
-          await message.channel.send('No dares found.')
+          embed = create_embed("🎯 All Dares", "No dares found in the database.", Color.purple())
+          await message.channel.send(embed=embed)
       
     elif content.startswith('/roastmode'):
-      await message.channel.send('Roast mode activated!')
       self.roast_active = True
+      embed = create_embed("🔥 Roast Mode Activated", "Prepare to be roasted!", Color.orange())
+      await message.channel.send(embed=embed)
     
     elif content.startswith('/truth'):
       truth = get_random_entry('truths')
-      await message.channel.send(truth)
-      if self.roast_active:
-        roast_prompt = await generate_roast_caption(truth)
-        await message.channel.send(roast_prompt)
-
+      if truth:
+        embed = create_embed("📝 Truth", f"**{truth}**", Color.blue())
+        await message.channel.send(embed=embed)
+        
+        if self.roast_active:
+          roast_prompt = await generate_roast_caption(truth)
+          roast_embed = create_embed("🔥 Roast", f"**{roast_prompt}**", Color.red())
+          await message.channel.send(embed=roast_embed)
+      else:
+        embed = create_embed("❌ Error", "No truths found in the database. Add some with `/addtruth`!", Color.red())
+        await message.channel.send(embed=embed)
     
     elif content.startswith('/dare'):
       dare = get_random_entry('dares')
-      await message.channel.send(dare)
+      if dare:
+        embed = create_embed("🎯 Dare", f"**{dare}**", Color.purple())
+        await message.channel.send(embed=embed)
+      else:
+        embed = create_embed("❌ Error", "No dares found in the database. Add some with `/adddare`!", Color.red())
+        await message.channel.send(embed=embed)
       
     elif content.startswith('/addtruth'):
       add_truth = content[len('/addtruth '):].strip()
       if add_truth:
         add_entry('truths', add_truth)
-        await message.channel.send('✅ Truth added!')
+        embed = create_embed("✅ Success", f"Truth added: **{add_truth}**", Color.green())
+        await message.channel.send(embed=embed)
       else:
-        await message.channel.send('❌ Please provide a truth to add.')
+        embed = create_embed("❌ Error", "Please provide a truth to add.", Color.red())
+        await message.channel.send(embed=embed)
       
     elif content.startswith('/adddare'):
       add_dare = content[len('/adddare '):].strip()
       if add_dare:
         add_entry('dares', add_dare)
-        await message.channel.send('✅ Dare added!')
+        embed = create_embed("✅ Success", f"Dare added: **{add_dare}**", Color.green())
+        await message.channel.send(embed=embed)
       else:
-        await message.channel.send('❌ Please provide a dare to add.')
+        embed = create_embed("❌ Error", "Please provide a dare to add.", Color.red())
+        await message.channel.send(embed=embed)
 
 # Create and run the client
 client = MyClient(intents=intents)
