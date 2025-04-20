@@ -91,9 +91,13 @@ def get_random_entry(table):
         
     try:
         c = conn.cursor()
-        c.execute(f"SELECT content FROM {table} ORDER BY RANDOM() LIMIT 1")
-        entries = c.fetchall()
-        return random.choice(entries)[0] if entries else None
+        # Use PostgreSQL's TABLESAMPLE for better randomization
+        if os.getenv("RAILWAY_ENVIRONMENT"):
+            c.execute(f"SELECT content FROM {table} TABLESAMPLE SYSTEM (100) LIMIT 1")
+        else:
+            c.execute(f"SELECT content FROM {table} ORDER BY RANDOM() LIMIT 1")
+        entry = c.fetchone()
+        return entry[0] if entry else None
     except Exception as e:
         print(f"Error getting random entry: {e}")
         return None
@@ -357,7 +361,9 @@ class MyClient(Client):
       await message.channel.send(embed=embed)
     
     elif content.startswith('/truth'):
+      print("Truth command received")
       truth = get_random_entry('truths')
+      print(f"Retrieved truth: {truth}")
       if truth:
         embed = create_embed("📝 Truth", f"**{truth}**", Color.blue())
         await message.channel.send(embed=embed)
@@ -367,6 +373,7 @@ class MyClient(Client):
           roast_embed = create_embed("🔥 Roast", f"**{roast_prompt}**", Color.red())
           await message.channel.send(embed=roast_embed)
       else:
+        print("No truth found in database")
         embed = create_embed("❌ Error", "No truths found in the database. Please contact an admin to add some.", Color.red())
         await message.channel.send(embed=embed)
     
