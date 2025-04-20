@@ -14,7 +14,7 @@ A Discord bot for Truth or Dare games with AI-powered roasts.
 ## Adding the Bot to Your Server
 
 Click the link below to add the bot to your server:
-[Add Mr. Nerve to your server](https://discord.com/oauth2/authorize?client_id=1362979855351939315)
+[Add Mr. Nerve to your server](https://discord.com/oauth2/authorize?client_id=1362979855351939315&permissions=2147567616&integration_type=0&scope=bot)
 
 ## Commands
 
