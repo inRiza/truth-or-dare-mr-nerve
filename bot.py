@@ -8,6 +8,9 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
+intents = Intents.default()
+intents.message_content = True
+
 # Try to import Google Generative AI
 try:
     import google.generativeai as genai
@@ -16,10 +19,10 @@ try:
         genai.configure(api_key=GOOGLE_API_KEY)
         GEMINI_AVAILABLE = True
     else:
-        print("Warning: GOOGLE_API_KEY not found in environment variables. Using local roast generation.")
+        print("Warning: GOOGLE_API_KEY not found in environment variables. Roast feature will not work.")
         GEMINI_AVAILABLE = False
 except ImportError:
-    print("Warning: google-generativeai package not installed. Using local roast generation.")
+    print("Warning: google-generativeai package not installed. Roast feature will not work.")
     GEMINI_AVAILABLE = False
 except Exception as e:
     print(f"Error configuring Google Generative AI: {e}")
@@ -66,23 +69,6 @@ def delete_all_truths():
 def delete_all_dares():
   delete_all_entries('dares')
   
-# Local roast generation as fallback
-def generate_local_roast(prompt):
-    roast_templates = [
-        "Oh, so you think {prompt}? That's the most ridiculous thing I've ever heard!",
-        "Wow, {prompt}? You must be really desperate for attention.",
-        "If you think {prompt}, you're even more delusional than I thought!",
-        "Oh please, {prompt}? That's the best you can come up with?",
-        "You actually believe {prompt}? That explains a lot about your personality.",
-        "Only someone with zero self-awareness would say {prompt}.",
-        "Is {prompt} supposed to impress someone? Because it's not working.",
-        "You're really going with {prompt}? How original and boring.",
-        "If {prompt} is your idea of interesting, I feel sorry for your friends.",
-        "Oh look, another person who thinks {prompt}. How predictable."
-    ]
-    
-    return random.choice(roast_templates).format(prompt=prompt)
-
 # Gemini-powered roast generation
 async def generate_gemini_roast(prompt):
     try:
@@ -106,19 +92,19 @@ async def generate_gemini_roast(prompt):
         )
         
         if not response.text:
-            return generate_local_roast(prompt)
+            return "Sorry, I couldn't generate a roast for that. Try something else!"
             
         return response.text.strip()
     except Exception as e:
         print(f"Error generating roast with Gemini: {str(e)}")
-        return generate_local_roast(prompt)
+        return "Sorry, I encountered an error while generating a roast. Please try again later."
 
-# Main roast generation function that tries Gemini first, falls back to local
+# Main roast generation function that uses Gemini
 async def generate_roast_caption(prompt):
     if GEMINI_AVAILABLE:
         return await generate_gemini_roast(prompt)
     else:
-        return generate_local_roast(prompt)
+        return "Sorry, the roast feature is currently unavailable. Please check back later."
 
 class MyClient(Client):
   def __init__(self, **kwargs):
@@ -135,13 +121,15 @@ class MyClient(Client):
 
     content = message.content.lower()
     
-    if content.startswith('/hi'):
-      await message.channel.send('''Hello there! What do you want to know about Mr. Nerve?
+    if content.startswith('/hello'):
+      await message.channel.send('Hello! I am Mr. Nerve, your friendly Discord bot!')
+      await message.channel.send('''Here are my commands:
 /truth - Get a random truth
 /dare - Get a random dare
 /addtruth - Add a truth
-/adddare - Add a dare''')
-      
+/adddare - Add a dare
+/roastmode - Activate roast mode''')
+    
     elif content.startswith('/admin'):
       input_password = content[len('/admin '):].strip()
       if input_password != os.getenv("ADMIN_PASSWORD"):
@@ -227,10 +215,8 @@ class MyClient(Client):
         await message.channel.send('✅ Dare added!')
       else:
         await message.channel.send('❌ Please provide a dare to add.')
-        
-intents = Intents.default()
-intents.message_content = True
 
+# Create and run the client
 client = MyClient(intents=intents)
 TOKEN = os.getenv("DISCORD_TOKEN")
 client.run(TOKEN)
